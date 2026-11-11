@@ -12,10 +12,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public page the QR code opens */}
-        <Route path="/" element={<PatientLookup />} />
-
-        {/* Staff dashboard */}
+        {/* The system starts in the staff dashboard */}
+        <Route path="/" element={<Navigate to="/admin" replace />} />
         <Route path="/admin/login" element={<Login />} />
         <Route path="/admin" element={<AdminLayout />}>
           <Route index element={<PatientList />} />
@@ -26,7 +24,10 @@ export default function App() {
           <Route path="account" element={<Account />} />
         </Route>
 
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Public page the QR code opens: patients enter their file number and phone number */}
+        <Route path="/patient" element={<PatientLookup />} />
+
+        <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
     </BrowserRouter>
   );

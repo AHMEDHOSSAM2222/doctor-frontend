@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { api, CLINIC_NAME } from '../../api.js';
+import { PdfPicker } from '../../components/Documents.jsx';
 import { Field } from '../../components/Field.jsx';
 
 const EMPTY = {
@@ -27,8 +28,9 @@ export default function PatientEditor() {
   const [form, setForm] = useState(EMPTY);
   const [nextNumber, setNextNumber] = useState('');
   const [loading, setLoading] = useState(isEdit);
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving] = useState('');
   const [error, setError] = useState('');
+  const [pdfs, setPdfs] = useState([]);
 
   useEffect(() => {
     document.title = `${isEdit ? 'Edit file' : 'New file'} – ${CLINIC_NAME}`;
@@ -50,15 +52,29 @@ export default function PatientEditor() {
 
   const submit = async (event) => {
     event.preventDefault();
-    setSaving(true);
+    setSaving('Saving…');
     setError('');
+    let patient;
     try {
-      const { patient } = isEdit ? await api.updatePatient(id, form) : await api.createPatient(form);
-      navigate(`/admin/patients/${patient.id}`, { replace: isEdit });
+      ({ patient } = isEdit ? await api.updatePatient(id, form) : await api.createPatient(form));
     } catch (err) {
       setError(err.message);
-      setSaving(false);
+      setSaving('');
+      return;
     }
+
+    // The file is saved; now attach the PDFs. If that fails, the file page shows the error and the
+    // PDFs can be added again there.
+    let uploadError = '';
+    if (pdfs.length) {
+      setSaving(`Uploading ${pdfs.length === 1 ? 'PDF' : `${pdfs.length} PDFs`}…`);
+      try {
+        await api.uploadDocuments(patient.id, pdfs);
+      } catch (err) {
+        uploadError = `The file was saved, but the PDFs were not uploaded: ${err.message}`;
+      }
+    }
+    navigate(`/admin/patients/${patient.id}`, { replace: isEdit, state: { uploadError } });
   };
 
   if (loading) return <p className="muted">Loading file…</p>;
@@ -77,8 +93,8 @@ export default function PatientEditor() {
 
       <form className="form-card" onSubmit={submit}>
         <p className="notice">
-          Patients see everything in this file except the phone number when they open it from the QR code. They need the
-          file number and this phone number to open it.
+          Patients see everything in this file, including the PDFs, except the phone number when they open it from the
+          QR code. They need the file number and this phone number to open it.
         </p>
 
         <div className="form-grid">
@@ -153,6 +169,16 @@ export default function PatientEditor() {
           </Field>
         </div>
 
+        <section className="form-section" aria-labelledby="pdf-section-title">
+          <h2 id="pdf-section-title" className="form-section-title">
+            {isEdit ? 'Add PDF files' : 'PDF files'}
+          </h2>
+          <p className="muted form-section-hint">
+            Lab results, reports, scans or prescriptions. Patients can open them from their phone.
+          </p>
+          <PdfPicker items={pdfs} onChange={setPdfs} disabled={Boolean(saving)} />
+        </section>
+
         {error && (
           <p className="form-error" role="alert">
             {error}
@@ -160,8 +186,8 @@ export default function PatientEditor() {
         )}
 
         <div className="form-actions">
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : isEdit ? 'Save changes' : 'Create file'}
+          <button type="submit" className="btn btn-primary" disabled={Boolean(saving)}>
+            {saving || (isEdit ? 'Save changes' : 'Create file')}
           </button>
           <Link to={isEdit ? `/admin/patients/${id}` : '/admin'} className="btn btn-secondary">
             Cancel

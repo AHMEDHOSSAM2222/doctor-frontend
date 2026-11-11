@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { api, CLINIC_NAME } from '../../api.js';
+import { DocumentList, PdfPicker } from '../../components/Documents.jsx';
 import { Folder, PatientSummary, VisitTimeline } from '../../components/PatientFile.jsx';
 import { todayIso } from '../../format.js';
 import { strings } from '../../i18n.js';
@@ -66,9 +67,14 @@ function VisitForm({ initial, onSave, onCancel }) {
 export default function PatientDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [patient, setPatient] = useState(null);
   const [error, setError] = useState('');
+  // Set when the editor saved the file but could not upload its PDFs.
+  const [uploadNotice, setUploadNotice] = useState(location.state?.uploadError || '');
   const [visitForm, setVisitForm] = useState(null);
+  const [pendingPdfs, setPendingPdfs] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     api
@@ -76,6 +82,11 @@ export default function PatientDetail() {
       .then(({ patient: p }) => setPatient(p))
       .catch((err) => setError(err.message));
   }, [id]);
+
+  // Clear the one-time notice from history so a page refresh does not show it again.
+  useEffect(() => {
+    if (location.state?.uploadError) navigate(location.pathname, { replace: true, state: null });
+  }, [location, navigate]);
 
   useEffect(() => {
     if (patient) document.title = `${patient.fullName} (file ${patient.fileNumber}) – ${CLINIC_NAME}`;
@@ -118,6 +129,49 @@ export default function PatientDetail() {
     if (!window.confirm(`Delete the visit on ${visit.visitDate}? This cannot be undone.`)) return;
     try {
       const { patient: updated } = await api.deleteVisit(patient.id, visit.id);
+      setPatient(updated);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const uploadPending = async () => {
+    setUploading(true);
+    setUploadNotice('');
+    try {
+      const { patient: updated } = await api.uploadDocuments(patient.id, pendingPdfs);
+      setPatient(updated);
+      setPendingPdfs([]);
+    } catch (err) {
+      setUploadNotice(err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  // The PDF needs the admin login, so fetch it and show it in a new tab. The tab is opened
+  // straight away (before the download) so the browser does not block it as a pop-up.
+  const openDocument = async (doc) => {
+    const tab = window.open('', '_blank');
+    try {
+      const url = URL.createObjectURL(await api.documentBlob(patient.id, doc.id));
+      if (tab) {
+        tab.location.href = url;
+      } else {
+        const link = Object.assign(document.createElement('a'), { href: url, download: `${doc.title}.pdf` });
+        link.click();
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } catch (err) {
+      tab?.close();
+      setError(err.message);
+    }
+  };
+
+  const deleteDocument = async (doc) => {
+    if (!window.confirm(`Delete “${doc.title}”? The patient will no longer see it. This cannot be undone.`)) return;
+    try {
+      const { patient: updated } = await api.deleteDocument(patient.id, doc.id);
       setPatient(updated);
     } catch (err) {
       setError(err.message);
@@ -175,7 +229,7 @@ export default function PatientDetail() {
       </div>
 
       {error && (
-        <p className="form-error" role="alert">
+        <p className="form-error page-alert" role="alert">
           {error}
         </p>
       )}
@@ -186,6 +240,45 @@ export default function PatientDetail() {
           <Folder label={t.fileNo} number={patient.fileNumber}>
             <PatientSummary patient={patient} t={t} />
           </Folder>
+
+          <section className="documents" aria-labelledby="documents-heading">
+            <h2 id="documents-heading" className="section-title">
+              PDF files
+            </h2>
+            {patient.documents.length > 0 ? (
+              <DocumentList
+                documents={patient.documents}
+                onOpen={openDocument}
+                renderActions={(doc) => (
+                  <button
+                    type="button"
+                    className="btn btn-danger btn-small"
+                    onClick={() => deleteDocument(doc)}
+                    aria-label={`Delete ${doc.title}`}
+                  >
+                    Delete
+                  </button>
+                )}
+              />
+            ) : (
+              <p className="empty-note">No PDFs in this file yet.</p>
+            )}
+            {uploadNotice && (
+              <p className="form-error" role="alert">
+                {uploadNotice}
+              </p>
+            )}
+            <PdfPicker items={pendingPdfs} onChange={setPendingPdfs} disabled={uploading} />
+            {pendingPdfs.length > 0 && (
+              <div className="button-row">
+                <button type="button" className="btn btn-primary" onClick={uploadPending} disabled={uploading}>
+                  {uploading
+                    ? 'Uploading…'
+                    : `Upload ${pendingPdfs.length === 1 ? 'PDF' : `${pendingPdfs.length} PDFs`}`}
+                </button>
+              </div>
+            )}
+          </section>
         </div>
 
         <section className="visits" aria-labelledby="visits-heading">

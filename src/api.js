@@ -28,10 +28,14 @@ export function setToken(token) {
   }
 }
 
-/** Calls the backend API and returns the parsed JSON body, or throws an ApiError. */
-export async function request(path, { method = 'GET', body, auth = true } = {}) {
+/**
+ * Calls the backend API and returns the parsed JSON body (or a Blob with `blob: true`),
+ * or throws an ApiError. A FormData body is sent as a multipart upload.
+ */
+export async function request(path, { method = 'GET', body, auth = true, blob = false } = {}) {
   const headers = {};
-  if (body !== undefined) headers['content-type'] = 'application/json';
+  const isForm = body instanceof FormData;
+  if (body !== undefined && !isForm) headers['content-type'] = 'application/json';
   const token = auth ? getToken() : null;
   if (token) headers.authorization = `Bearer ${token}`;
 
@@ -40,22 +44,31 @@ export async function request(path, { method = 'GET', body, auth = true } = {}) 
     res = await fetch(`${API_URL}${path}`, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError('Cannot reach the server. Check the connection and try again.', 0, 'OFFLINE');
   }
 
-  const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (res.status === 401 && auth) {
     setToken(null);
     window.dispatchEvent(new Event('admin:logout'));
   }
+  if (blob && res.ok) return res.blob();
+
+  const data = res.status === 204 ? null : await res.json().catch(() => null);
   if (!res.ok) {
     throw new ApiError(data?.error || `Request failed (${res.status})`, res.status, data?.code);
   }
   return data;
 }
+
+export const MAX_UPLOAD_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB) || 20;
+export const MAX_FILES_PER_UPLOAD = 10;
+
+/** Link a patient taps to open one of their PDFs (valid until the lookup's access token expires). */
+export const publicDocumentUrl = (docId, token) =>
+  `${API_URL}/api/public/documents/${docId}?token=${encodeURIComponent(token)}`;
 
 export const api = {
   login: (username, password) =>
@@ -76,6 +89,18 @@ export const api = {
   updateVisit: (patientId, visitId, visit) =>
     request(`/api/patients/${patientId}/visits/${visitId}`, { method: 'PUT', body: visit }),
   deleteVisit: (patientId, visitId) => request(`/api/patients/${patientId}/visits/${visitId}`, { method: 'DELETE' }),
+
+  /** items: [{ file: File, title: string }] */
+  uploadDocuments: (patientId, items) => {
+    const form = new FormData();
+    for (const { file, title } of items) {
+      form.append('files', file, file.name);
+      form.append('titles', title);
+    }
+    return request(`/api/patients/${patientId}/documents`, { method: 'POST', body: form });
+  },
+  documentBlob: (patientId, docId) => request(`/api/patients/${patientId}/documents/${docId}`, { blob: true }),
+  deleteDocument: (patientId, docId) => request(`/api/patients/${patientId}/documents/${docId}`, { method: 'DELETE' }),
 
   lookupFile: (fileNumber, phone) =>
     request('/api/public/lookup', { method: 'POST', body: { fileNumber, phone }, auth: false }),

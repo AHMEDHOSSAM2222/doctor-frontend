@@ -36,3 +36,15 @@ export const todayIso = () => {
 /** Converts Arabic-Indic digits typed on Arabic keyboards to 0-9. */
 export const normalizeDigits = (value) =>
   String(value ?? '').replace(/[٠-٩۰-۹]/g, (d) => String(d.charCodeAt(0) & 0xf));
+
+/** "240 KB", "1.2 MB" (localised, e.g. Arabic digits and units in ar-EG). */
+export function formatSize(bytes, locale = 'en-GB') {
+  const mb = bytes / (1024 * 1024);
+  const [value, unit] = mb >= 1 ? [mb, 'megabyte'] : [Math.max(bytes / 1024, 1), 'kilobyte'];
+  return new Intl.NumberFormat(locale, {
+    style: 'unit',
+    unit,
+    unitDisplay: 'short',
+    maximumFractionDigits: unit === 'megabyte' ? 1 : 0,
+  }).format(value);
+}

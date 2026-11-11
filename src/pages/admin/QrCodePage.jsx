@@ -3,10 +3,13 @@ import { useEffect, useMemo, useState } from 'react';
 import { CLINIC_NAME } from '../../api.js';
 import { Field } from '../../components/Field.jsx';
 
-const SETTINGS_KEY = 'qr-poster-settings';
+// v2: the patient page moved from "/" to "/patient", so older saved links are not reused.
+const SETTINGS_KEY = 'qr-poster-settings-v2';
+const PATIENT_PAGE_PATH = '/patient';
 const QR_COLORS = { dark: '#18231f', light: '#ffffff' };
 
-const defaultLink = () => `${(import.meta.env.VITE_PUBLIC_URL || window.location.origin).replace(/\/+$/, '')}/`;
+const defaultLink = () =>
+  `${(import.meta.env.VITE_PUBLIC_URL || window.location.origin).replace(/\/+$/, '')}${PATIENT_PAGE_PATH}`;
 
 const defaults = () => ({
   link: defaultLink(),
@@ -146,7 +149,7 @@ export default function QrCodePage() {
           {isLocal && (
             <p className="warn" role="status">
               Phones cannot open “{new URL(link).hostname}”. Use your live website address, or for testing on the same
-              Wi-Fi, your computer’s network address (for example http://192.168.1.10:5173/).
+              Wi-Fi, your computer’s network address (for example http://192.168.1.10:5173/patient).
             </p>
           )}
           <label className="field">

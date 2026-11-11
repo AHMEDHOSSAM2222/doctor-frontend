@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, CLINIC_NAME } from '../api.js';
+import { api, CLINIC_NAME, publicDocumentUrl } from '../api.js';
+import { DocumentList } from '../components/Documents.jsx';
 import { Folder, PatientSummary, VisitTimeline } from '../components/PatientFile.jsx';
 import { normalizeDigits } from '../format.js';
 import { initialLang, saveLang, strings } from '../i18n.js';
@@ -49,12 +50,21 @@ export default function PatientLookup() {
     }
   };
 
-  const closeFile = () => {
+  const closeFile = (reason = '') => {
     setFile(null);
     setFileNumber('');
     setPhone('');
+    setErrorKey(reason);
     window.scrollTo({ top: 0 });
     requestAnimationFrame(() => fileInputRef.current?.focus());
+  };
+
+  // PDF links stop working when the access token expires; close the file instead of opening a dead link.
+  const checkAccess = (event) => {
+    if (Date.parse(file.access.expiresAt) <= Date.now()) {
+      event.preventDefault();
+      closeFile('expired');
+    }
   };
 
   return (
@@ -120,6 +130,23 @@ export default function PatientLookup() {
               <PatientSummary patient={file.patient} t={t} />
             </Folder>
 
+            {file.documents.length > 0 && (
+              <section className="documents patient-documents" aria-labelledby="documents-heading">
+                <div>
+                  <h2 id="documents-heading" className="section-title">
+                    {t.documents}
+                  </h2>
+                  <p className="muted">{t.documentsHint}</p>
+                </div>
+                <DocumentList
+                  documents={file.documents}
+                  locale={t.locale}
+                  getHref={(doc) => publicDocumentUrl(doc.id, file.access.token)}
+                  onLinkClick={checkAccess}
+                />
+              </section>
+            )}
+
             <section className="visits" aria-labelledby="visits-heading">
               <h2 id="visits-heading" className="section-title">
                 {t.visits}
@@ -129,7 +156,7 @@ export default function PatientLookup() {
 
             <div className="close-area">
               <p className="privacy-note">{t.privacy}</p>
-              <button type="button" className="btn btn-secondary btn-block btn-large" onClick={closeFile}>
+              <button type="button" className="btn btn-secondary btn-block btn-large" onClick={() => closeFile()}>
                 {t.closeFile}
               </button>
             </div>
