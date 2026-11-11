@@ -32,11 +32,12 @@ export function setToken(token) {
  * Calls the backend API and returns the parsed JSON body (or a Blob with `blob: true`),
  * or throws an ApiError. A FormData body is sent as a multipart upload.
  */
-export async function request(path, { method = 'GET', body, auth = true, blob = false } = {}) {
+export async function request(path, { method = 'GET', body, auth = true, blob = false, bearer } = {}) {
   const headers = {};
   const isForm = body instanceof FormData;
   if (body !== undefined && !isForm) headers['content-type'] = 'application/json';
-  const token = auth ? getToken() : null;
+  // `bearer` sends a patient's access token instead of the staff login.
+  const token = bearer || (auth ? getToken() : null);
   if (token) headers.authorization = `Bearer ${token}`;
 
   let res;
@@ -50,7 +51,7 @@ export async function request(path, { method = 'GET', body, auth = true, blob = 
     throw new ApiError('Cannot reach the server. Check the connection and try again.', 0, 'OFFLINE');
   }
 
-  if (res.status === 401 && auth) {
+  if (res.status === 401 && auth && !bearer) {
     setToken(null);
     window.dispatchEvent(new Event('admin:logout'));
   }
@@ -65,6 +66,15 @@ export async function request(path, { method = 'GET', body, auth = true, blob = 
 
 export const MAX_UPLOAD_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB) || 20;
 export const MAX_FILES_PER_UPLOAD = 10;
+
+const pdfForm = (items) => {
+  const form = new FormData();
+  for (const { file, title } of items) {
+    form.append('files', file, file.name);
+    form.append('titles', title);
+  }
+  return form;
+};
 
 /** Link a patient taps to open one of their PDFs (valid until the lookup's access token expires). */
 export const publicDocumentUrl = (docId, token) =>
@@ -91,17 +101,16 @@ export const api = {
   deleteVisit: (patientId, visitId) => request(`/api/patients/${patientId}/visits/${visitId}`, { method: 'DELETE' }),
 
   /** items: [{ file: File, title: string }] */
-  uploadDocuments: (patientId, items) => {
-    const form = new FormData();
-    for (const { file, title } of items) {
-      form.append('files', file, file.name);
-      form.append('titles', title);
-    }
-    return request(`/api/patients/${patientId}/documents`, { method: 'POST', body: form });
-  },
+  uploadDocuments: (patientId, items) =>
+    request(`/api/patients/${patientId}/documents`, { method: 'POST', body: pdfForm(items) }),
   documentBlob: (patientId, docId) => request(`/api/patients/${patientId}/documents/${docId}`, { blob: true }),
   deleteDocument: (patientId, docId) => request(`/api/patients/${patientId}/documents/${docId}`, { method: 'DELETE' }),
 
   lookupFile: (fileNumber, phone) =>
     request('/api/public/lookup', { method: 'POST', body: { fileNumber, phone }, auth: false }),
+  // Patient page: add PDFs to / remove own PDFs from the open file, using the lookup's access token.
+  patientUploadDocuments: (accessToken, items) =>
+    request('/api/public/documents', { method: 'POST', body: pdfForm(items), auth: false, bearer: accessToken }),
+  patientDeleteDocument: (accessToken, docId) =>
+    request(`/api/public/documents/${docId}`, { method: 'DELETE', auth: false, bearer: accessToken }),
 };

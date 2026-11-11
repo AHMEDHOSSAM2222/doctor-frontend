@@ -1282,3 +1282,24 @@ a.doc-title:focus-visible::after {
   font-size: var(--step--1);
   color: var(--muted);
 }
+
+/* Who added a PDF ("Uploaded by patient" / "Added by you") */
+.doc-tag {
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--wash);
+  color: var(--scrub-deep);
+  font-weight: 500;
+}
+
+/* Buttons in a row sit above the patient page's full-row PDF link */
+.doc-item .btn {
+  position: relative;
+  z-index: 1;
+}
+
+.patient-upload {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}

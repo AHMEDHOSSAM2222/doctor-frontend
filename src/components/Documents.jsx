@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MAX_FILES_PER_UPLOAD, MAX_UPLOAD_MB } from '../api.js';
 import { formatDate, formatSize } from '../format.js';
 
@@ -31,8 +31,9 @@ export function PdfIcon() {
 /**
  * PDFs in a patient's file. Pass `getHref(doc)` for plain links (patient page)
  * or `onOpen(doc)` for a button (admin, which needs to send its login token).
+ * `tagFor(doc)` can return a short label shown under the title, e.g. who added it.
  */
-export function DocumentList({ documents, locale = 'en-GB', getHref, onOpen, onLinkClick, renderActions }) {
+export function DocumentList({ documents, locale = 'en-GB', getHref, onOpen, onLinkClick, renderActions, tagFor }) {
   return (
     <ul className="doc-list">
       {documents.map((doc) => (
@@ -57,6 +58,7 @@ export function DocumentList({ documents, locale = 'en-GB', getHref, onOpen, onL
             <span className="doc-meta">
               <time dateTime={doc.createdAt}>{formatDate(doc.createdAt, locale)}</time>
               <span>{formatSize(doc.size, locale)}</span>
+              {tagFor?.(doc) && <span className="doc-tag">{tagFor(doc)}</span>}
             </span>
           </div>
           {renderActions?.(doc)}
@@ -69,26 +71,43 @@ export function DocumentList({ documents, locale = 'en-GB', getHref, onOpen, onL
 const isPdfFile = (file) => file.type === 'application/pdf' || /\.pdf$/i.test(file.name);
 let nextKey = 0;
 
+/** Labels for the staff dashboard; the patient page passes its own (Arabic or English). */
+export const STAFF_PICKER_LABELS = {
+  choose: 'Choose PDF files',
+  hint: (mb) => `or drag them here. Up to ${mb} MB each.`,
+  title: 'Title patients see',
+  remove: 'Remove',
+  removeFile: (name) => `Remove ${name}`,
+  queue: 'PDFs ready to upload',
+  notPdf: (name) => `“${name}” is not a PDF.`,
+  tooLarge: (name, mb) => `“${name}” is larger than ${mb} MB.`,
+  tooMany: (max) => `Add up to ${max} PDFs at a time. Upload these, then add the rest.`,
+};
+
 /**
- * Lets staff pick PDFs (button or drag and drop) and give each one a title patients will see.
+ * Lets the user pick PDFs (button or drag and drop) and give each one a title.
  * `items` is [{ key, file, title }].
  */
-export function PdfPicker({ items, onChange, disabled = false }) {
+export function PdfPicker({ items, onChange, disabled = false, labels = STAFF_PICKER_LABELS, locale = 'en-GB' }) {
   const [problems, setProblems] = useState([]);
   const [dragging, setDragging] = useState(false);
+
+  // Once the queue is emptied (uploaded or removed), earlier warnings no longer apply.
+  useEffect(() => {
+    if (items.length === 0) setProblems([]);
+  }, [items.length]);
 
   const addFiles = (fileList) => {
     const issues = [];
     let accepted = [];
     for (const file of Array.from(fileList)) {
-      if (!isPdfFile(file)) issues.push(`“${file.name}” is not a PDF.`);
-      else if (file.size > MAX_UPLOAD_MB * 1024 * 1024)
-        issues.push(`“${file.name}” is larger than ${MAX_UPLOAD_MB} MB.`);
+      if (!isPdfFile(file)) issues.push(labels.notPdf(file.name));
+      else if (file.size > MAX_UPLOAD_MB * 1024 * 1024) issues.push(labels.tooLarge(file.name, MAX_UPLOAD_MB));
       else accepted.push({ key: `pdf-${(nextKey += 1)}`, file, title: file.name.replace(/\.pdf$/i, '') });
     }
     const room = MAX_FILES_PER_UPLOAD - items.length;
     if (accepted.length > room) {
-      issues.push(`Add up to ${MAX_FILES_PER_UPLOAD} PDFs at a time. Upload these, then add the rest.`);
+      issues.push(labels.tooMany(MAX_FILES_PER_UPLOAD));
       accepted = accepted.slice(0, Math.max(room, 0));
     }
     setProblems(issues);
@@ -126,8 +145,8 @@ export function PdfPicker({ items, onChange, disabled = false }) {
         />
         <PdfIcon />
         <span className="dropzone-text">
-          <span className="dropzone-title">Choose PDF files</span>
-          <span className="dropzone-hint">or drag them here. Up to {MAX_UPLOAD_MB} MB each.</span>
+          <span className="dropzone-title">{labels.choose}</span>
+          <span className="dropzone-hint">{labels.hint(MAX_UPLOAD_MB)}</span>
         </span>
       </label>
 
@@ -140,12 +159,12 @@ export function PdfPicker({ items, onChange, disabled = false }) {
       )}
 
       {items.length > 0 && (
-        <ul className="pdf-queue" aria-label="PDFs ready to upload">
+        <ul className="pdf-queue" aria-label={labels.queue}>
           {items.map((item) => (
             <li key={item.key} className="pdf-queue-item">
               <div className="field pdf-queue-field">
                 <label className="field-label" htmlFor={item.key}>
-                  Title patients see
+                  {labels.title}
                 </label>
                 <input
                   id={item.key}
@@ -157,7 +176,7 @@ export function PdfPicker({ items, onChange, disabled = false }) {
                   onChange={(event) => updateTitle(item.key, event.target.value)}
                 />
                 <span className="field-hint">
-                  {item.file.name}, {formatSize(item.file.size)}
+                  <span dir="auto">{item.file.name}</span>, {formatSize(item.file.size, locale)}
                 </span>
               </div>
               <button
@@ -165,9 +184,9 @@ export function PdfPicker({ items, onChange, disabled = false }) {
                 className="btn btn-danger btn-small"
                 onClick={() => remove(item.key)}
                 disabled={disabled}
-                aria-label={`Remove ${item.file.name}`}
+                aria-label={labels.removeFile(item.file.name)}
               >
-                Remove
+                {labels.remove}
               </button>
             </li>
           ))}
