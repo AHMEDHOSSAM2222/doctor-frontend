@@ -249,7 +249,6 @@ export default function PatientDetail() {
               <DocumentList
                 documents={patient.documents}
                 onOpen={openDocument}
-                tagFor={(doc) => (doc.uploadedBy === 'patient' ? 'Uploaded by patient' : null)}
                 renderActions={(doc) => (
                   <button
                     type="button"

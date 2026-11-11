@@ -19,11 +19,7 @@ When creating or editing a patient file, choose PDFs (or drag them onto the form
 the patient will see, for example "Blood test, November 2026". More PDFs can be added, opened or deleted from the
 patient's file page. Up to 10 PDFs at a time, 20 MB each.
 
-Patients can also add PDFs themselves: after opening their file they tap **Upload a PDF**, name the document and
-upload it (for example results from another lab). Staff see these marked "Uploaded by patient". Patients can
-delete the PDFs they added, but not the clinic's. Each patient can add up to 20 PDFs.
-
-For privacy, a patient can open and upload PDFs for 30 minutes after entering their details; after that the page
+For privacy, a patient can open their PDFs for 30 minutes after entering their details; after that the page
 closes the file and asks for the file number and phone number again.
 
 ## The QR code

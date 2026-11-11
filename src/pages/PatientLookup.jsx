@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, CLINIC_NAME, publicDocumentUrl } from '../api.js';
-import { DocumentList, PdfPicker } from '../components/Documents.jsx';
+import { DocumentList } from '../components/Documents.jsx';
 import { Folder, PatientSummary, VisitTimeline } from '../components/PatientFile.jsx';
 import { normalizeDigits } from '../format.js';
 import { initialLang, saveLang, strings } from '../i18n.js';
@@ -14,9 +14,6 @@ export default function PatientLookup() {
   const [loading, setLoading] = useState(false);
   const [errorKey, setErrorKey] = useState('');
   const [file, setFile] = useState(null);
-  const [pendingPdfs, setPendingPdfs] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [uploadMessage, setUploadMessage] = useState(null); // { type: 'success' | 'error', text }
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -55,8 +52,6 @@ export default function PatientLookup() {
 
   const closeFile = (reason = '') => {
     setFile(null);
-    setPendingPdfs([]);
-    setUploadMessage(null);
     setFileNumber('');
     setPhone('');
     setErrorKey(reason);
@@ -64,52 +59,12 @@ export default function PatientLookup() {
     requestAnimationFrame(() => fileInputRef.current?.focus());
   };
 
-  // The access token from the lookup opens, adds and removes PDFs for a limited time.
-  const accessExpired = () => Date.parse(file.access.expiresAt) <= Date.now();
-
-  // Close the file instead of opening a dead PDF link.
+  // PDF links stop working when the access token expires; close the file instead of opening a dead link.
   const checkAccess = (event) => {
-    if (accessExpired()) {
+    if (Date.parse(file.access.expiresAt) <= Date.now()) {
       event.preventDefault();
       closeFile('expired');
     }
-  };
-
-  // Shows an upload/delete error in the patient's language; an ended session closes the file.
-  const showUploadError = (err) => {
-    if (err.status === 401) return closeFile('expired');
-    const text = err.status === 0 ? t.offline : t.uploadErrors[err.code] || t.uploadErrors.default;
-    return setUploadMessage({ type: 'error', text });
-  };
-
-  const uploadPdfs = async () => {
-    if (accessExpired()) return closeFile('expired');
-    setUploading(true);
-    setUploadMessage(null);
-    try {
-      const { documents } = await api.patientUploadDocuments(file.access.token, pendingPdfs);
-      setFile((prev) => ({ ...prev, documents }));
-      setUploadMessage({ type: 'success', text: t.uploaded(pendingPdfs.length) });
-      setPendingPdfs([]);
-    } catch (err) {
-      showUploadError(err);
-    } finally {
-      setUploading(false);
-    }
-    return undefined;
-  };
-
-  const deleteOwnDocument = async (doc) => {
-    if (accessExpired()) return closeFile('expired');
-    if (!window.confirm(t.confirmDelete(doc.title))) return undefined;
-    setUploadMessage(null);
-    try {
-      const { documents } = await api.patientDeleteDocument(file.access.token, doc.id);
-      setFile((prev) => ({ ...prev, documents }));
-    } catch (err) {
-      showUploadError(err);
-    }
-    return undefined;
   };
 
   return (
@@ -175,66 +130,22 @@ export default function PatientLookup() {
               <PatientSummary patient={file.patient} t={t} />
             </Folder>
 
-            <section className="documents patient-documents" aria-labelledby="documents-heading">
-              <div>
-                <h2 id="documents-heading" className="section-title">
-                  {t.documents}
-                </h2>
-                <p className="muted">{file.documents.length > 0 ? t.documentsHint : t.noDocuments}</p>
-              </div>
-              {file.documents.length > 0 && (
+            {file.documents.length > 0 && (
+              <section className="documents patient-documents" aria-labelledby="documents-heading">
+                <div>
+                  <h2 id="documents-heading" className="section-title">
+                    {t.documents}
+                  </h2>
+                  <p className="muted">{t.documentsHint}</p>
+                </div>
                 <DocumentList
                   documents={file.documents}
                   locale={t.locale}
                   getHref={(doc) => publicDocumentUrl(doc.id, file.access.token)}
                   onLinkClick={checkAccess}
-                  tagFor={(doc) => (doc.uploadedBy === 'patient' ? t.addedByYou : null)}
-                  renderActions={(doc) =>
-                    doc.uploadedBy === 'patient' && (
-                      <button
-                        type="button"
-                        className="btn btn-danger btn-small"
-                        onClick={() => deleteOwnDocument(doc)}
-                        aria-label={t.deleteDocNamed(doc.title)}
-                      >
-                        {t.deleteDoc}
-                      </button>
-                    )
-                  }
                 />
-              )}
-
-              <div className="patient-upload">
-                <PdfPicker
-                  items={pendingPdfs}
-                  onChange={(items) => {
-                    setPendingPdfs(items);
-                    setUploadMessage(null);
-                  }}
-                  disabled={uploading}
-                  labels={t.upload}
-                  locale={t.locale}
-                />
-                {pendingPdfs.length > 0 && (
-                  <button
-                    type="button"
-                    className="btn btn-primary btn-block btn-large"
-                    onClick={uploadPdfs}
-                    disabled={uploading}
-                  >
-                    {uploading ? t.uploading : t.uploadButton(pendingPdfs.length)}
-                  </button>
-                )}
-                {uploadMessage && (
-                  <p
-                    className={uploadMessage.type === 'success' ? 'form-success' : 'form-error'}
-                    role={uploadMessage.type === 'success' ? 'status' : 'alert'}
-                  >
-                    {uploadMessage.text}
-                  </p>
-                )}
-              </div>
-            </section>
+              </section>
+            )}
 
             <section className="visits" aria-labelledby="visits-heading">
               <h2 id="visits-heading" className="section-title">
