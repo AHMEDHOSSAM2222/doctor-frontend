@@ -9,8 +9,8 @@ It has two parts:
   login. Staff create and edit patient files, attach PDFs (lab results, reports, scans), record visits, and
   generate the QR code.
 - **Patient page** (`/patient`): the page the clinic QR code opens. It asks for the file number and phone number,
-  then shows the patient's file: details, allergies, chronic conditions, doctor's notes, visits, and their PDFs,
-  which open in the phone's PDF viewer. It is built for phones and available in Arabic and English (right-to-left
+  then shows the patient's file: details, allergies, chronic conditions, doctor's notes, visits, and their PDFs.
+  Tapping a PDF opens it in the phone's PDF viewer; its **Download** button saves it on the phone. It is built for phones and available in Arabic and English (right-to-left
   supported). Arabic-Indic digits are accepted.
 
 ## PDF files
@@ -19,8 +19,11 @@ When creating or editing a patient file, choose PDFs (or drag them onto the form
 the patient will see, for example "Blood test, November 2026". More PDFs can be added, opened or deleted from the
 patient's file page. Up to 10 PDFs at a time, 20 MB each.
 
-For privacy, a patient can open their PDFs for 30 minutes after entering their details; after that the page
-closes the file and asks for the file number and phone number again.
+On the patient page each PDF has a **Download** button that saves it on the patient's phone, named after its
+title (for example `Blood test, November 2026.pdf`).
+
+For privacy, a patient can open and download their PDFs for 30 minutes after entering their details; after that
+the page closes the file and asks for the file number and phone number again.
 
 ## The QR code
 

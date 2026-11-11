@@ -66,9 +66,12 @@ export async function request(path, { method = 'GET', body, auth = true, blob = 
 export const MAX_UPLOAD_MB = Number(import.meta.env.VITE_MAX_UPLOAD_MB) || 20;
 export const MAX_FILES_PER_UPLOAD = 10;
 
-/** Link a patient taps to open one of their PDFs (valid until the lookup's access token expires). */
-export const publicDocumentUrl = (docId, token) =>
-  `${API_URL}/api/public/documents/${docId}?token=${encodeURIComponent(token)}`;
+/**
+ * Link a patient taps to open one of their PDFs (valid until the lookup's access token expires).
+ * With `download: true` the PDF is saved to the device instead of opened.
+ */
+export const publicDocumentUrl = (docId, token, { download = false } = {}) =>
+  `${API_URL}/api/public/documents/${docId}?token=${encodeURIComponent(token)}${download ? '&download=1' : ''}`;
 
 export const api = {
   login: (username, password) =>

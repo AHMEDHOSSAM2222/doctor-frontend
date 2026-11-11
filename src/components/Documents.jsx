@@ -1,6 +1,21 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { MAX_FILES_PER_UPLOAD, MAX_UPLOAD_MB } from '../api.js';
 import { formatDate, formatSize } from '../format.js';
+
+export function DownloadIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+      <path
+        d="M10 3v9m0 0-3.5-3.5M10 12l3.5-3.5M4 14.5V16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-1.5"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 export function PdfIcon() {
   return (
@@ -76,6 +91,11 @@ let nextKey = 0;
 export function PdfPicker({ items, onChange, disabled = false }) {
   const [problems, setProblems] = useState([]);
   const [dragging, setDragging] = useState(false);
+
+  // Once the queue is emptied (uploaded or removed), earlier warnings no longer apply.
+  useEffect(() => {
+    if (items.length === 0) setProblems([]);
+  }, [items.length]);
 
   const addFiles = (fileList) => {
     const issues = [];

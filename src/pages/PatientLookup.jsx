@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { api, CLINIC_NAME, publicDocumentUrl } from '../api.js';
-import { DocumentList } from '../components/Documents.jsx';
+import { DocumentList, DownloadIcon } from '../components/Documents.jsx';
 import { Folder, PatientSummary, VisitTimeline } from '../components/PatientFile.jsx';
 import { normalizeDigits } from '../format.js';
 import { initialLang, saveLang, strings } from '../i18n.js';
@@ -143,6 +143,18 @@ export default function PatientLookup() {
                   locale={t.locale}
                   getHref={(doc) => publicDocumentUrl(doc.id, file.access.token)}
                   onLinkClick={checkAccess}
+                  renderActions={(doc) => (
+                    <a
+                      className="btn btn-secondary btn-small doc-download"
+                      href={publicDocumentUrl(doc.id, file.access.token, { download: true })}
+                      download={`${doc.title}.pdf`}
+                      aria-label={t.downloadNamed(doc.title)}
+                      onClick={checkAccess}
+                    >
+                      <DownloadIcon />
+                      {t.download}
+                    </a>
+                  )}
                 />
               </section>
             )}

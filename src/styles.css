@@ -1282,3 +1282,14 @@ a.doc-title:focus-visible::after {
   font-size: var(--step--1);
   color: var(--muted);
 }
+
+/* The Download button sits above the patient page's full-row "open PDF" link */
+.doc-item .btn {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+
+.doc-download {
+  gap: 0.35rem;
+}
