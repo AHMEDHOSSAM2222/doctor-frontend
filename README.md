@@ -91,10 +91,11 @@ These are read at build time, so rebuild after changing them.
 
 ## Build and deploy
 
-To put the whole system on a server, follow
-[DEPLOY.md in doctor-backend](https://github.com/AHMEDHOSSAM2222/doctor-backend/blob/HEAD/DEPLOY.md): it builds this
-site with the `Dockerfile` here and serves it with Caddy (see `Caddyfile`), which adds HTTPS and forwards `/api`
-to the backend on the same domain.
+To put the whole system online, follow one of the guides in doctor-backend:
+[RAILWAY.md](https://github.com/AHMEDHOSSAM2222/doctor-backend/blob/HEAD/RAILWAY.md) (Railway, no server to manage)
+or [DEPLOY.md](https://github.com/AHMEDHOSSAM2222/doctor-backend/blob/HEAD/DEPLOY.md) (your own server with Docker).
+Both build this site with the `Dockerfile` here (`railway.json` tells Railway to) and serve it with Caddy (see
+`Caddyfile`).
 
 To host the site on its own:
 
