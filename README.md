@@ -91,6 +91,13 @@ These are read at build time, so rebuild after changing them.
 
 ## Build and deploy
 
+To put the whole system on a server, follow
+[DEPLOY.md in doctor-backend](https://github.com/AHMEDHOSSAM2222/doctor-backend/blob/HEAD/DEPLOY.md): it builds this
+site with the `Dockerfile` here and serves it with Caddy (see `Caddyfile`), which adds HTTPS and forwards `/api`
+to the backend on the same domain.
+
+To host the site on its own:
+
 ```bash
 npm run build
 ```
