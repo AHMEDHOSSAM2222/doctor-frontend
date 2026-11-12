@@ -37,6 +37,24 @@ The code links to the patient page of this website (`<your address>/patient`). T
 address the dashboard is open on, and you can change it on the page. Phones cannot open `localhost` links, so
 the page warns you if the link is local.
 
+## Demo for showing the system
+
+`npm run build:demo` builds a demo version that needs no backend or database: the real pages run in the browser
+with sample patients, visits and PDFs, and changes stay in the viewer's browser. It produces one self-contained
+page, `dist-demo/clinic-demo.html`, that can be published as a single web page. A bar at the top shows the sample
+logins (staff `admin` / `demo1234`, patient file `1001` with phone `01012345678`) and switches between the staff
+dashboard and the patient page; adding `#patient` to the demo's address opens the patient page directly.
+
+Set the link the demo's QR code opens (the demo's own address followed by `#patient`) when building:
+
+```bash
+VITE_QR_LINK=https://example.com/clinic-demo#patient npm run build:demo
+```
+
+Where the page that hosts the demo blocks new tabs, downloads or printing, PDFs open in a viewer inside the page
+and Download, Print and confirmation steps show a short note about what the live system does. The demo code lives
+in `src/demo/` and is left out of the normal `npm run build`.
+
 ## Run locally
 
 Start [doctor-backend](https://github.com/AHMEDHOSSAM2222/doctor-backend) first (it listens on port 4000), then:

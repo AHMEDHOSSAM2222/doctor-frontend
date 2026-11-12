@@ -1,4 +1,5 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { BrowserRouter, MemoryRouter, Navigate, Route, Routes } from 'react-router-dom';
 import Account from './pages/admin/Account.jsx';
 import AdminLayout from './pages/admin/AdminLayout.jsx';
 import Login from './pages/admin/Login.jsx';
@@ -8,9 +9,29 @@ import PatientList from './pages/admin/PatientList.jsx';
 import QrCodePage from './pages/admin/QrCodePage.jsx';
 import PatientLookup from './pages/PatientLookup.jsx';
 
+const DEMO = import.meta.env.VITE_DEMO === 'true';
+const DemoFrame = DEMO ? lazy(() => import('./demo/DemoFrame.jsx')) : null;
+
+/**
+ * The demo is published as a single page that cannot use real URL paths,
+ * so it keeps the route in memory; "#patient" opens the patient page directly.
+ */
+function AppRouter({ children }) {
+  if (!DEMO) return <BrowserRouter>{children}</BrowserRouter>;
+  const start = window.location.hash === '#patient' ? '/patient' : '/admin';
+  return (
+    <MemoryRouter initialEntries={[start]}>
+      <Suspense fallback={null}>
+        <DemoFrame />
+      </Suspense>
+      {children}
+    </MemoryRouter>
+  );
+}
+
 export default function App() {
   return (
-    <BrowserRouter>
+    <AppRouter>
       <Routes>
         {/* The system starts in the staff dashboard */}
         <Route path="/" element={<Navigate to="/admin" replace />} />
@@ -29,6 +50,6 @@ export default function App() {
 
         <Route path="*" element={<Navigate to="/admin" replace />} />
       </Routes>
-    </BrowserRouter>
+    </AppRouter>
   );
 }

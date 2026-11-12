@@ -3,13 +3,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { CLINIC_NAME } from '../../api.js';
 import { Field } from '../../components/Field.jsx';
 
-// v2: the patient page moved from "/" to "/patient", so older saved links are not reused.
-const SETTINGS_KEY = 'qr-poster-settings-v2';
 const PATIENT_PAGE_PATH = '/patient';
 const QR_COLORS = { dark: '#18231f', light: '#ffffff' };
 
+// VITE_QR_LINK sets the exact link (used by the demo); otherwise <site address>/patient.
 const defaultLink = () =>
+  import.meta.env.VITE_QR_LINK ||
   `${(import.meta.env.VITE_PUBLIC_URL || window.location.origin).replace(/\/+$/, '')}${PATIENT_PAGE_PATH}`;
+
+// Saved poster settings belong to one site address: when the address changes
+// (or the patient page moves), the poster starts again from the new defaults.
+const SETTINGS_KEY = `qr-poster-settings-v2:${defaultLink()}`;
 
 const defaults = () => ({
   link: defaultLink(),
